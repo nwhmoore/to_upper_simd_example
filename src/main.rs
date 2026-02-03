@@ -11,24 +11,20 @@ fn main() {
     println!("{}", to_upper_all(input));
 }
 
-fn to_upper_simd32(simd_slice: &u8x32) -> [u8; 32] {
-    // cool vector code B)
-    let char_mask = simd_slice.simd_ge(Simd::splat(b'a')) & simd_slice.simd_le(Simd::splat(b'z'));
-    let out = char_mask.select(simd_slice.bitand(Simd::splat(0b11011111)), *simd_slice);
-    *out.as_array()
-}
-
 fn to_upper_all(input: &str) -> String {
-    let mut output = String::new();
+    let mut output = Vec::new();
     let (pre, simd_slices, suf) = input.as_bytes().as_simd::<32>();
-    
-    output.push_str(&str::from_utf8(pre).unwrap().to_uppercase());
+
+    output.extend(pre.to_ascii_uppercase());
 
     for chunk in simd_slices {
-        output.push_str(&str::from_utf8(&to_upper_simd32(chunk)).unwrap())
+        let char_mask = chunk.simd_ge(Simd::splat(b'a')) & chunk.simd_le(Simd::splat(b'z'));
+        let out = char_mask.select(chunk.bitand(Simd::splat(0b11011111)), *chunk);
+
+        output.extend(out.as_array())
     }
 
-    output.push_str(&str::from_utf8(suf).unwrap().to_uppercase());
+    output.extend(suf.to_ascii_uppercase());
 
-    output
+    String::from_utf8(output).unwrap()
 }
