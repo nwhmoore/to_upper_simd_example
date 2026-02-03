@@ -11,33 +11,24 @@ fn main() {
     println!("{}", to_upper_all(input));
 }
 
-fn to_upper_simd32(bytes: [u8; 32]) -> [u8; 32] {
+fn to_upper_simd32(simd_slice: &u8x32) -> [u8; 32] {
     // cool vector code B)
-    let simd_bytes = Simd::from(bytes);
-    let char_mask = simd_bytes.simd_ge(Simd::splat(b'a')) & simd_bytes.simd_le(Simd::splat(b'z'));
-    let out = char_mask.select(simd_bytes.bitand(Simd::splat(0b11011111)), simd_bytes);
-
-    out.to_array()
+    let char_mask = simd_slice.simd_ge(Simd::splat(b'a')) & simd_slice.simd_le(Simd::splat(b'z'));
+    let out = char_mask.select(simd_slice.bitand(Simd::splat(0b11011111)), *simd_slice);
+    *out.as_array()
 }
 
 fn to_upper_all(input: &str) -> String {
     let mut output = String::new();
+    let (pre, simd_slices, suf) = input.as_bytes().as_simd::<32>();
+    
+    output.push_str(&str::from_utf8(pre).unwrap().to_uppercase());
 
-    // boring built-in code T.T for remainder
-    let remainder = input.len() % 32;
-    output.push_str(&input[0..remainder].to_uppercase());
-
-    // load in chunks of string for cool vector code B)
-    for chunk in 0..input.len() / 32 {
-        output.push_str(
-            str::from_utf8(&to_upper_simd32(
-                <[u8; 32]>::try_from(
-                    input[remainder + chunk * 32..remainder + (chunk + 1) * 32].as_bytes(),
-                )
-                .unwrap(),
-            ))
-            .unwrap(),
-        )
+    for chunk in simd_slices {
+        output.push_str(&str::from_utf8(&to_upper_simd32(chunk)).unwrap())
     }
+
+    output.push_str(&str::from_utf8(suf).unwrap().to_uppercase());
+
     output
 }
