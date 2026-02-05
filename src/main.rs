@@ -12,7 +12,7 @@ fn main() {
 }
 
 fn to_upper_all(input: &str) -> String {
-    let mut output = Vec::new();
+    let mut output = Vec::with_capacity(input.len());
     let (pre, simd_slices, suf) = input.as_bytes().as_simd::<32>();
 
     output.extend(pre.to_ascii_uppercase());
